@@ -59,3 +59,4 @@ it automatically will get in sync
 ### Demo
 ![](assets/chemtrails.png)
 
+You can get this one called `Chemtrails.wav` from [Chris Allen's Drive folder](https://drive.google.com/drive/folders/1UHvGC6-TDywFri7am8YJl5G6svK33qhC) of lossless oscilloscope music, there are more creators but shout out to this guy that is like "here download them and leave me a like"
