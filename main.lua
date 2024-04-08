@@ -1,7 +1,7 @@
-local moonshine = require("moonshine")
-local rgb = require("color2RGB")
-local srt = require("srt")
-local vumeter = love.graphics.newImage("vugradient.png")
+local moonshine = require("lib.moonshine")
+local rgb = require("lib.color2RGB")
+local srt = require("lib.srt")
+local vumeter = love.graphics.newImage("res/vugradient.png")
 local captions = srt.new("")
 --Un-comment to load automatically a file and play it immediately
 local soundData -- = love.sound.newSoundData("music.ogg")
