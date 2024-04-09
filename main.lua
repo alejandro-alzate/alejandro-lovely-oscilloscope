@@ -26,6 +26,8 @@ local vuColorR = "#ffffff"
 local showPerformance = false
 local showCaptions = true
 local showVUMeter = true
+local simulateRealCRTBeam = true
+local queueSourcesInstead = true
 local useShaders = false
 local samples = {}
 local warningMsg = [[
@@ -340,24 +342,72 @@ function love.update(dt)
 		if love.keyboard.isDown("up") then
 			changeMusicVolume(music,  50)
 		end
+	else
+		--Let the samples bleed slowy
+		table.remove(samples)
+	end
+end
+
+local function getDistance(x1,y1,x2,y2)
+	local dx = x2 - x1
+	local dy = y2 - y1
+	local distance = math.sqrt(dx * dx + dy * dy)
+
+	local canvasWidth = love.graphics.getWidth()
+	local canvasHeight = love.graphics.getHeight()
+	
+	local minDistance = 0.05 * math.min(canvasWidth, canvasHeight) -- 5% of canvas size
+	local maxDistance = 0.3 * math.max(canvasWidth, canvasHeight) -- 90% of canvas size
+	
+	local normalizedDistance = (distance - minDistance) / (maxDistance - minDistance)
+	
+	normalizedDistance = math.max(0, math.min(1, normalizedDistance))
+	
+	local intensity = 1 - normalizedDistance
+	
+	intensity = 0.1 + intensity * 0.9
+	
+	return intensity
+end
+
+local function oscilloscopeDrawRoutine()
+	if #lines > 4  and #lines % 2 == 0 then
+		--Here's a guy that did it properly not like me
+		--Fake 'till you make it am i right?
+		--https://richardandersson.net/?p=350
+		if simulateRealCRTBeam then
+			for i = 1, #lines, 2 do
+				--Short distances will give time to the "BEAM"
+				--to excite a non-existent phosphor layer
+				local oscCenx = love.graphics.getWidth() / 2
+				local oscCeny = (love.graphics.getHeight() / 2) + (showVUMeter and (vumeter:getHeight() / 2) or 0)
+				local x1 = lines[i + 0] or oscCenx
+				local y1 = lines[i + 1] or oscCeny
+				local x2 = lines[i + 2] or x1 or oscCenx
+				local y2 = lines[i + 3] or y1 or oscCeny
+				local intensity = getDistance(x1, y1, x2, y2)
+				love.graphics.setColor(0, intensity, 0, intensity / 2)
+				love.graphics.line(x1, y1, x2, y2)
+			end
+		else
+			love.graphics.setColor(0, 1, 0)
+			love.graphics.line(lines)
+		end
 	end
 end
 
 function love.draw()
 	if music then
-		love.graphics.setColor(0, 1, 0)
-		if #lines > 4 then
-			if useShaders then
-				shader(function()love.graphics.line(lines)end)
-			else
-				love.graphics.line(lines)
-			end
+		if useShaders then
+			shader(oscilloscopeDrawRoutine)
+		else
+			oscilloscopeDrawRoutine()
 		end
 	else
 		love.graphics.setColor(1,1,1)
 		love.graphics.printf(welcomeMsg.."\n"..warningMsg.."\n"..dropfileMsg, 0, love.graphics.getHeight() / 2, love.graphics.getWidth(), "center")
 	end
-	--Please use it, took way to much time to do a pleasant vu meter
+	--Please use it :crying_face:, took way to much time to do a pleasant vu meter
 	if showVUMeter then
 		--BG
 		love.graphics.setColor(1,1,1)
@@ -380,7 +430,7 @@ function love.draw()
 		love.graphics.setColor(0,0,0,0.8)
 		love.graphics.rectangle("line", vubarR * love.graphics.getWidth(), vumeter:getHeight() / 2, 10,  vumeter:getHeight() / 2)
 		--Vu meter Text
-		love.graphics.setColor(1, 0, 1)
+		love.graphics.setColor(rgb("#AA33AA"))
 		local formattedvuL = string.format("%.3f", dBvuL)
 		local formattedvuR = string.format("%.3f", dBvuR)
 		love.graphics.print(formattedvuL, (love.graphics.getWidth() / 2) - (love.graphics.getFont():getWidth(formattedvuL) / 2), vumeter:getHeight() * 0.25 - (love.graphics.getFont():getHeight() / 2))
@@ -398,8 +448,14 @@ function love.draw()
 		love.graphics.printf(text, x, y, showPerformance and love.graphics.getWidth() / 2 or love.graphics.getWidth(), "center")
 	end
 	if showPerformance then
-		local text = "FPS: %d\nSample troughput: %d\n"
-		local text = string.format(text, love.timer.getFPS(), #samples)
+		local stats = love.graphics.getStats()
+		local text = "FPS: %d\nDrawCalls: %d\nSample troughput: %d\n"
+		local text = string.format(
+			text,
+			love.timer.getFPS(),
+			stats.drawcalls or 0,
+			#samples
+			)
 		text = (showVUMeter and "\n\n" or "") .. text
 		love.graphics.setColor(0,0,0)
 		love.graphics.print(text, 1, 1)
@@ -461,6 +517,9 @@ function love.keypressed(key, scancode, isrepeat)
 		end
 	end
 	if key == "f5" then love.event.quit("restart") end
+	if key == "f6" then simulateRealCRTBeam = not simulateRealCRTBeam end
+	if key == "f7" then queueSourcesInstead = not queueSourcesInstead end
+	if key == "f11"then love.window.setFullscreen(not love.window.getFullscreen(), "desktop") end
 
 	--Playback
 	if music then

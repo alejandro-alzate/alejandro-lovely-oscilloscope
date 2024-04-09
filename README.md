@@ -46,6 +46,8 @@ it automatically will get in sync
 	- `F3`: Show VU meter
 	- `F4`: Show Captions
 	- `F5`: Restart application
+	- `F6`:	Simulate (improperly) a crt beam
+	- `F7`: Queue audios instead of playing right away (not implemented yet)
 	- `Shift + F4`: Clear captions file
 - Playback:
 	- `space`:		Play pause
