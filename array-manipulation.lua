@@ -28,13 +28,13 @@ function aman.getSampleBulk(channel, truncate, lastTell, currentTell, soundData)
 	return samples
 end
 
-function aman.processSamples(truncate, soundData)
+function aman.processSamples(truncate, soundData, lastTell, currentTell)
 	local processedSamples = {}
 	local channelCount = soundData:getChannelCount()
-	local leftChannel = aman.getSampleBulk(1, truncate)
+	local leftChannel = aman.getSampleBulk(1, truncate, lastTell, currentTell, soundData)
 	local rightChannel = {}
 	if channelCount == 2 then
-		rightChannel = aman.getSampleBulk(2, truncate)
+		rightChannel = aman.getSampleBulk(2, truncate, lastTell, currentTell, soundData)
 	end
 
 	for i = 1, #leftChannel do
