@@ -1,4 +1,6 @@
+--luacheck: globals love
 local moonshine = require("lib.moonshine")
+local man = require("array-manipulation")
 local rgb = require("lib.color2RGB")
 local srt = require("lib.srt")
 local vumeter = love.graphics.newImage("res/vugradient.png")
@@ -16,11 +18,8 @@ local dBvuR = 0
 local normalizeddBvuL = 0
 local normalizeddBvuR = 0
 local gravity = 0.5
-local acceleration = 10
 local vubarL = 0
-local vubarvelL = 0
 local vubarR = 0
-local vubarvelR = 0
 local vuColorL = "#ffffff"
 local vuColorR = "#ffffff"
 local showPerformance = false
@@ -278,7 +277,6 @@ local function setMusicVolume(source, logPercentage)
 	-- Set the new volume for the music source
 	source:setVolume(newVolume)
 end
-
 
 local function changevuBarColor()
 	local colors = {
