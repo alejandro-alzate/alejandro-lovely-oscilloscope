@@ -1,5 +1,6 @@
 --luacheck: globals love
 local moonshine = require("lib.moonshine")
+local scope = require("scope")
 local man = require("array-manipulation")
 local rgb = require("lib.color2RGB")
 local srt = require("lib.srt")
@@ -22,12 +23,13 @@ local vubarL = 0
 local vubarR = 0
 local vuColorL = "#ffffff"
 local vuColorR = "#ffffff"
-local showPerformance = false
+local showPerformance = true
 local showCaptions = true
 local showVUMeter = true
 local simulateRealCRTBeam = true
 local queueSourcesInstead = true
 local useShaders = false
+local scopeMode = "XY"
 local samples = {}
 --local rawSamples = {}
 local warningMsg = [[
@@ -181,39 +183,42 @@ end
 function love.update(dt)
 	if music then
 		if music:isPlaying() then
-			currentTell = music:tell()
-			captions:setTime(currentTell)
-			lines = {0,0,0,0}
-			samples = {}
-			samples = man.processSamples(false, soundData, lastTell, currentTell)
-			--rawSamples = samples
-			if #samples > 0 then
-				local volume = music:getVolume()
-				local referenceValue = 0.8
-				vuL, vuR = getAbsoluteAverage(samples)
-				vuL = vuL * volume
-				vuR = vuR * volume
-				dBvuL, dBvuR = linearToDecibels(vuL, referenceValue), linearToDecibels(vuR, referenceValue)
-				normalizeddBvuL = normalizeDecibels(dBvuL)
-				normalizeddBvuR = normalizeDecibels(dBvuR)
-				updatevumeterBar(dt, normalizeddBvuL, normalizeddBvuR)
-				changevuBarColor()
+			if scopeMode == "XY" then
+				currentTell = music:tell()
+				captions:setTime(currentTell)
+				lines = {0,0,0,0}
+				samples = {}
+				samples = man.processSamples(false, soundData, lastTell, currentTell)
+				scope.update(dt, samples)
+				--rawSamples = samples
+				if #samples > 0 then
+					local volume = music:getVolume()
+					local referenceValue = 0.8
+					vuL, vuR = getAbsoluteAverage(samples)
+					vuL = vuL * volume
+					vuR = vuR * volume
+					dBvuL, dBvuR = linearToDecibels(vuL, referenceValue), linearToDecibels(vuR, referenceValue)
+					normalizeddBvuL = normalizeDecibels(dBvuL)
+					normalizeddBvuR = normalizeDecibels(dBvuR)
+					updatevumeterBar(dt, normalizeddBvuL, normalizeddBvuR)
+					changevuBarColor()
+				end
+				samples = man.scaleTable(
+					samples,
+					math.min(love.graphics.getWidth(),
+					(love.graphics.getHeight()) / 2) - ( showVUMeter and (vumeter:getHeight() / 2) or 0)
+					)
+				samples = man.flipTable(samples, 1)
+				samples = man.flipTable(samples, 0)
+				samples = man.flipTable(samples, 1)
+				samples = man.translateTable(samples, 1, love.graphics.getWidth() / 2)
+				samples = man.translateTable(
+					samples,
+					0, (love.graphics.getHeight() / 2) + (showVUMeter and (vumeter:getHeight() / 2) or 0)
+					)
+				lines = samples
+				lastTell = music:tell()
 			end
-			samples = man.scaleTable(
-				samples,
-				math.min(love.graphics.getWidth(),
-				(love.graphics.getHeight()) / 2) - ( showVUMeter and (vumeter:getHeight() / 2) or 0)
-				)
-			samples = man.flipTable(samples, 1)
-			samples = man.flipTable(samples, 0)
-			samples = man.flipTable(samples, 1)
-			samples = man.translateTable(samples, 1, love.graphics.getWidth() / 2)
-			samples = man.translateTable(
-				samples,
-				0, (love.graphics.getHeight() / 2) + (showVUMeter and (vumeter:getHeight() / 2) or 0)
-				)
-			lines = samples
-			lastTell = music:tell()
 		end
 		if love.keyboard.isDown("down") then
 			changeMusicVolume(music, -50)
@@ -290,6 +295,8 @@ function love.draw()
 			love.graphics.getHeight() / 2, love.graphics.getWidth(), "center"
 			)
 	end
+	--Beta feature: Too much flicker
+	--scope.draw(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2)
 	--Please use it :crying_face:, took way to much time to do a pleasant vu meter
 	if showVUMeter then
 		--BG
@@ -422,6 +429,7 @@ function love.keypressed(key, _, _)
 	if key == "f5" then love.event.quit("restart") end
 	if key == "f6" then simulateRealCRTBeam = not simulateRealCRTBeam end
 	if key == "f7" then queueSourcesInstead = not queueSourcesInstead end
+	if key == "f8" then scopeMode = scopeMode == "XY" and "AB" or "XY" end
 	if key == "f11"then love.window.setFullscreen(not love.window.getFullscreen(), "desktop") end
 
 	--Playback
