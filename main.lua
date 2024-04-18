@@ -183,6 +183,7 @@ local function updatevumeterBar(dt, volL, volR)
 end
 
 local function updatevumeterEnvironment(dt)
+	if not soundData then return end
 	captions:setTime(currentTell)
 	lines = {0,0,0,0}
 	samples = {}
@@ -252,7 +253,8 @@ function love.update(dt)
 					updatevumeterEnvironment(dt)
 				end
 			else
-				defaultRecordingDevice:start()
+				local d = defaultRecordingDevice
+				d:start(8192, d:getSampleRate(), d:getBitDepth(), d:getChannelCount())
 			end
 		end
 	else
@@ -464,8 +466,10 @@ function love.keypressed(key, _, _)
 		recording = not recording
 		if recording then
 			defaultRecordingDevice = love.audio.getRecordingDevices()[1]
+			if music then pcall(music.stop, music) end
 			print("recording started")
 			releaseSources()
+			music = nil
 		else
 			print("recording stopped")
 		end
