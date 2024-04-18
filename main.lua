@@ -7,6 +7,7 @@ local srt = require("lib.srt")
 local vumeter = love.graphics.newImage("res/vugradient.png")
 local captions = srt.new("")
 --Un-comment to load automatically a file and play it immediately
+local recording = false
 local soundData -- = love.sound.newSoundData("music.ogg")
 local music -- = love.audio.newSource(soundData)
 local lines = {0,0,10,10}
@@ -23,7 +24,7 @@ local vubarL = 0
 local vubarR = 0
 local vuColorL = "#ffffff"
 local vuColorR = "#ffffff"
-local showPerformance = true
+local showPerformance = false
 local showCaptions = true
 local showVUMeter = true
 local simulateRealCRTBeam = true
@@ -31,6 +32,7 @@ local queueSourcesInstead = true
 local useShaders = false
 local scopeMode = "XY"
 local samples = {}
+local defaultRecordingDevice = love.audio.getRecordingDevices()[1]
 --local rawSamples = {}
 local warningMsg = [[
 Disclaimer: Remeber that some files are
@@ -180,43 +182,50 @@ local function updatevumeterBar(dt, volL, volR)
 	vubarR = math.max(min, math.min(max, vubarR))
 end
 
+local function updatevumeterEnvironment(dt)
+	captions:setTime(currentTell)
+	lines = {0,0,0,0}
+	samples = {}
+	samples = man.processSamples(false, soundData, lastTell, currentTell)
+	scope.update(dt, samples)
+	--rawSamples = samples
+	if #samples > 0 then
+		local volume = 1
+		if music then
+			volume = music:getVolume()
+		end
+		local referenceValue = 0.8
+		vuL, vuR = getAbsoluteAverage(samples)
+		vuL = vuL * volume
+		vuR = vuR * volume
+		dBvuL, dBvuR = linearToDecibels(vuL, referenceValue), linearToDecibels(vuR, referenceValue)
+		normalizeddBvuL = normalizeDecibels(dBvuL)
+		normalizeddBvuR = normalizeDecibels(dBvuR)
+		updatevumeterBar(dt, normalizeddBvuL, normalizeddBvuR)
+		changevuBarColor()
+	end
+	samples = man.scaleTable(
+		samples,
+		math.min(love.graphics.getWidth(),
+		(love.graphics.getHeight()) / 2) - ( showVUMeter and (vumeter:getHeight() / 2) or 0)
+		)
+	samples = man.flipTable(samples, 1)
+	samples = man.flipTable(samples, 0)
+	samples = man.flipTable(samples, 1)
+	samples = man.translateTable(samples, 1, love.graphics.getWidth() / 2)
+	samples = man.translateTable(
+		samples,
+		0, (love.graphics.getHeight() / 2) + (showVUMeter and (vumeter:getHeight() / 2) or 0)
+		)
+	lines = samples
+end
+
 function love.update(dt)
 	if music then
 		if music:isPlaying() then
 			if scopeMode == "XY" then
 				currentTell = music:tell()
-				captions:setTime(currentTell)
-				lines = {0,0,0,0}
-				samples = {}
-				samples = man.processSamples(false, soundData, lastTell, currentTell)
-				scope.update(dt, samples)
-				--rawSamples = samples
-				if #samples > 0 then
-					local volume = music:getVolume()
-					local referenceValue = 0.8
-					vuL, vuR = getAbsoluteAverage(samples)
-					vuL = vuL * volume
-					vuR = vuR * volume
-					dBvuL, dBvuR = linearToDecibels(vuL, referenceValue), linearToDecibels(vuR, referenceValue)
-					normalizeddBvuL = normalizeDecibels(dBvuL)
-					normalizeddBvuR = normalizeDecibels(dBvuR)
-					updatevumeterBar(dt, normalizeddBvuL, normalizeddBvuR)
-					changevuBarColor()
-				end
-				samples = man.scaleTable(
-					samples,
-					math.min(love.graphics.getWidth(),
-					(love.graphics.getHeight()) / 2) - ( showVUMeter and (vumeter:getHeight() / 2) or 0)
-					)
-				samples = man.flipTable(samples, 1)
-				samples = man.flipTable(samples, 0)
-				samples = man.flipTable(samples, 1)
-				samples = man.translateTable(samples, 1, love.graphics.getWidth() / 2)
-				samples = man.translateTable(
-					samples,
-					0, (love.graphics.getHeight() / 2) + (showVUMeter and (vumeter:getHeight() / 2) or 0)
-					)
-				lines = samples
+				updatevumeterEnvironment(dt)
 				lastTell = music:tell()
 			end
 		end
@@ -229,6 +238,27 @@ function love.update(dt)
 	else
 		--Let the samples bleed slowy
 		table.remove(samples)
+	end
+
+	if recording then
+		if defaultRecordingDevice then
+			if defaultRecordingDevice:isRecording() then
+				soundData = defaultRecordingDevice:getData()
+				if soundData then
+					lastTell = 0
+					currentTell = soundData:getDuration() - 0.0001
+					--print(lastTell, currentTell)
+					--man.processSamples(false, soundData, lastTell, currentTell)
+					updatevumeterEnvironment(dt)
+				end
+			else
+				defaultRecordingDevice:start()
+			end
+		end
+	else
+		if defaultRecordingDevice then
+			defaultRecordingDevice:stop()
+		end
 	end
 end
 
@@ -281,7 +311,7 @@ local function oscilloscopeDrawRoutine()
 end
 
 function love.draw()
-	if music then
+	if music or recording then
 		if useShaders then
 			shader(oscilloscopeDrawRoutine)
 		else
@@ -430,6 +460,16 @@ function love.keypressed(key, _, _)
 	if key == "f6" then simulateRealCRTBeam = not simulateRealCRTBeam end
 	if key == "f7" then queueSourcesInstead = not queueSourcesInstead end
 	if key == "f8" then scopeMode = scopeMode == "XY" and "AB" or "XY" end
+	if key == "f9" then
+		recording = not recording
+		if recording then
+			defaultRecordingDevice = love.audio.getRecordingDevices()[1]
+			print("recording started")
+			releaseSources()
+		else
+			print("recording stopped")
+		end
+	end
 	if key == "f11"then love.window.setFullscreen(not love.window.getFullscreen(), "desktop") end
 
 	--Playback

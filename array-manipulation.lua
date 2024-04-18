@@ -9,8 +9,11 @@ function aman.getSamplesInRange(start, finish, source, channel)
 
 	local samples = {}
 
+	--print("sampleCount", sampleCount)
 	for i = startSample, finishSample do
-		local sample = source:getSample(i, channel)
+		--print(string.format("Getting sample #%s", i))
+		local sample = source:getSample(math.min(i, sampleCount), channel)
+		--print(sample)
 		table.insert(samples, sample)
 	end
 

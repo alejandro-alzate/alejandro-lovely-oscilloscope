@@ -48,6 +48,7 @@ it automatically will get in sync
 	- `F5`: Restart application
 	- `F6`:	Simulate (improperly) a crt beam
 	- `F7`: Queue audios instead of playing right away (not implemented yet)
+	- `f9`: Monitor the device default recording device
 	- `Shift + F4`: Clear captions file
 - Playback:
 	- `space`:		Play pause
