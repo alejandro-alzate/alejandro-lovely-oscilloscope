@@ -32,6 +32,8 @@ local queueSourcesInstead = true
 local useShaders = false
 local scopeMode = "XY"
 local samples = {}
+local video
+local showVideo = true
 local defaultRecordingDevice = love.audio.getRecordingDevices()[1]
 --local rawSamples = {}
 local warningMsg = [[
@@ -66,6 +68,7 @@ function love.load()
 	love.window.setTitle(titleMsg)
 	if music then
 		music:play()
+		if video then pcall(video.play, video) end
 	end
 end
 
@@ -286,6 +289,26 @@ local function getDistance(x1,y1,x2,y2)
 	return intensity
 end
 
+local function drawVideoIfAvailable()
+	if not video then return end
+	if not showVideo then return end
+	if video:typeOf("Drawable") then
+		love.graphics.push("all")
+		love.graphics.origin()
+		local size = math.min(
+			love.graphics.getWidth() / video:getWidth(),
+			love.graphics.getHeight() / video:getHeight()
+			)
+		love.graphics.translate(
+			love.graphics.getWidth() / 2,
+			love.graphics.getHeight() / 2 + (showVUMeter and (vumeter:getHeight() / 2) or 0))
+		love.graphics.draw(video, 0, 0, 0, size, size, video:getWidth() / 2, video:getHeight() / 2)
+		--love.graphics.draw(drawable, x, y, r, sx, sy, ox, oy, kx, ky)
+		love.graphics.pop()
+
+	end
+end
+
 local function oscilloscopeDrawRoutine()
 	if #lines > 4  and #lines % 2 == 0 then
 		--Here's a guy that did it properly not like me
@@ -315,8 +338,10 @@ end
 function love.draw()
 	if music or recording then
 		if useShaders then
+			shader(drawVideoIfAvailable)
 			shader(oscilloscopeDrawRoutine)
 		else
+			drawVideoIfAvailable()
 			oscilloscopeDrawRoutine()
 		end
 	else
@@ -413,6 +438,9 @@ local function releaseSources()
 	if soundData then
 		pcall(soundData.release, soundData)
 	end
+	if video then
+		pcall(video.release, video)
+	end
 end
 
 function love.filedropped(file)
@@ -430,11 +458,21 @@ function love.filedropped(file)
 			love.window.setTitle(titleMsg .. ": " .. filename)
 			if music then
 				music:stop()
+				if video then pcall(video.stop, video) end
 			end
 			releaseSources()
 			soundData = love.sound.newSoundData(file)
 			music = love.audio.newSource(soundData)
+			local attempt, result = pcall(love.graphics.newVideo, file)
+			if attempt then
+				video = result
+				music = video:getSource() or music
+				print(string.format("loading \"%s\" as video source.", file:getFilename()))
+			else
+				video = false
+			end
 			music:play()
+			if video then pcall(video.play, video) end
 		else
 			print(msg)
 		end
@@ -474,22 +512,30 @@ function love.keypressed(key, _, _)
 			print("recording stopped")
 		end
 	end
-	if key == "f11"then love.window.setFullscreen(not love.window.getFullscreen(), "desktop") end
+	if key == "f10" then showVideo = not showVideo end
+	if key == "f11" then love.window.setFullscreen(not love.window.getFullscreen(), "desktop") end
 
 	--Playback
 	if music then
 		if key == "space" then
 			if music:isPlaying()
-			then music:pause()
-			else music:play() end
+			then
+				music:pause()
+				if video then pcall(video.seek, video, music:tell()) pcall(video.pause, video) end
+			else
+				music:play()
+				if video then pcall(video.seek, video, music:tell()) pcall(video.play, video) end
+			end
 		end
 
 		if key == "left" then
 			music:seek(math.max(0, music:tell() - 5)) lastTell = music:tell() currentTell = music:tell()
+			if video then pcall(video.seek, video, music:tell()) end
 		end
 
 		if key == "right" then
 			music:seek(math.min(music:getDuration(), music:tell() + 5)) lastTell = music:tell() currentTell = music:tell()
+			if video then pcall(video.seek, video, music:tell()) end
 		end
 
 		if key == "," and love.keyboard.isDown("lshift", "rshift") then

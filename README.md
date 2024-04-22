@@ -49,6 +49,7 @@ it automatically will get in sync
 	- `F6`:	Simulate (improperly) a crt beam
 	- `F7`: Queue audios instead of playing right away (not implemented yet)
 	- `f9`: Monitor the device default recording device
+	- `f10`: Show video behind
 	- `Shift + F4`: Clear captions file
 - Playback:
 	- `space`:		Play pause
