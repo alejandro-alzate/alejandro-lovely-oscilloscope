@@ -453,7 +453,7 @@ function love.filedropped(file)
 	if extension ~= "srt" then
 		local res, msg = pcall(love.sound.newSoundData, file)
 		if res then
-			print(string.format("loading \"%s\" as sound source.", file:getFilename()))
+			print(string.format("Loading \"%s\" as sound source.", file:getFilename()))
 			local filename = file:getFilename():match("[\\/]?([^\\/]+)$") or file:getFilename()
 			love.window.setTitle(titleMsg .. ": " .. filename)
 			if music then
@@ -467,7 +467,7 @@ function love.filedropped(file)
 			if attempt then
 				video = result
 				music = video:getSource() or music
-				print(string.format("loading \"%s\" as video source.", file:getFilename()))
+				print(string.format("Loading \"%s\" as video source.", file:getFilename()))
 			else
 				video = false
 			end
