@@ -37,7 +37,7 @@ local showVideo = true
 local defaultRecordingDevice = love.audio.getRecordingDevices()[1]
 --local rawSamples = {}
 local warningMsg = [[
-Disclaimer: Remeber that some files are
+Disclaimer: Remember that some files are
 too spicy and may trigger seizures
 on some people with that out of he way
 ]]
